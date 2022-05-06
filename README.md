@@ -1,6 +1,5 @@
 # cpp-search-server
 Финальный проект: поисковый сервер
-// search_server_s1_t2_v2.cpp
 
 #include <algorithm>
 #include <cmath>
