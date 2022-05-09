@@ -2,7 +2,6 @@
 // Напишите ответ здесь: 273
 
 // Закомитьте изменения и отправьте их в свой репозиторий.
-// search_server_s1_t2_v2.cpp
 
 #include <algorithm>
 #include <cmath>
@@ -16,6 +15,8 @@
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+
+const long double EPSILONT = 1e-6;
 
 string ReadLine() {
     string s;
@@ -85,8 +86,8 @@ public:
             });
         document_podgon.emplace(document_id, status);
     }
-    //...............................................<FindTopDocument>...................................
 
+    //...............................................<FindTopDocument>...................................
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
         const Query query = ParseQuery(raw_query);
@@ -94,7 +95,7 @@ public:
 
         sort(matched_documents.begin(), matched_documents.end(),
             [](const Document& lhs, const Document& rhs) {
-                if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                if (abs(lhs.relevance - rhs.relevance) < EPSILONT) {
                     return lhs.rating > rhs.rating;
                 }
                 else {
@@ -110,9 +111,11 @@ public:
     vector<Document> FindTopDocuments(const string& raw_query) const {
         return FindTopDocuments(raw_query, [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::ACTUAL; });
     }
-    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus sta) const {
-        return FindTopDocuments(raw_query, [sta](int document_id, DocumentStatus status, int rating) { return status == sta; });
+
+    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus STATUS) const {
+        return FindTopDocuments(raw_query, [STATUS](int document_id, DocumentStatus status, int rating) { return status == STATUS; });
     }
+
     int GetDocumentCount() const {
         return documents_.size();
     }
@@ -150,6 +153,7 @@ private:
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
     map<int, DocumentStatus> document_podgon;
+
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
     }
@@ -230,6 +234,7 @@ private:
             if (word_to_document_freqs_.count(word) == 0) {
                 continue;
             }
+            //В связи с старой версией Visual Studio, у меня не работают пары вида [A,B], поэтому приходится использовать метод, по типу name1.first и т.п.(
             const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
             for (const auto& name1 : word_to_document_freqs_.at(word)) {
                 const auto& document_data = documents_.at(name1.first);
