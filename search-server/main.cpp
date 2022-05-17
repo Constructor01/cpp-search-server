@@ -29,7 +29,7 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
 Разместите код остальных тестов здесь
 */
 //Добавление документов.Добавленный документ должен находиться по поисковому запросу, который содержит слова из документа.
-void AddDocumentForSearching()
+void TestAddDocumentForSearching()
 {
     SearchServer search_server;
     search_server.SetStopWords("и в на"s);
@@ -38,31 +38,39 @@ void AddDocumentForSearching()
 }
 
 //Поддержка минус-слов. Документы, содержащие минус-слова из поискового запроса, не должны включаться в результаты поиска.
-void SupportMinusWord()
+void TestSupportMinusWord()
 {
     SearchServer search_server;
-    search_server.SetStopWords("и в на"s);
+    search_server.SetStopWords("и в на с"s);
     search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
-    ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный -кот"s, DocumentStatus::ACTUAL).size() == 0, "Request has the minus word");
+    search_server.AddDocument(1, "пушистый ухоженный пес"s, DocumentStatus::ACTUAL, { 9, 13, 22 });
+    search_server.AddDocument(2, "пушистый пес с ошейником"s, DocumentStatus::ACTUAL, { 7, 8, -3, 17 });
+    ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный -кот"s, DocumentStatus::ACTUAL).size() == 2, "Request has the minus word");
+    ASSERT_HINT(search_server.FindTopDocuments("-пушистый ухоженный кот"s, DocumentStatus::ACTUAL).size() == 1, "Request has the minus word");
 }
 
 
 //Сортировка найденных документов по релевантности. Возвращаемые при поиске документов результаты должны быть отсортированы в порядке убывания релевантности.
-void SortDocumentRelevance()
+void TestSortDocumentRelevance()
 {
-    SearchServer search_server;
-    search_server.SetStopWords("и в на"s);
-    search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
-    search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
-    search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
-    ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::ACTUAL)[0].id == 1, "Missorted documents");
-    ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::ACTUAL)[1].id == 2, "Missorted documents");
-    ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::ACTUAL)[2].id == 0, "Missorted documents");
+        SearchServer search_server;
+        search_server.SetStopWords("и в на"s);
+        search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
+        search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+        search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
+        vector <Document> test_correct_relevance = search_server.FindTopDocuments("пушистый ухоженный кот"s);
+        ASSERT_HINT(test_correct_relevance.size() == 3, "Wrong size vector");
+        const double zapros0 = (log(3) * 0.5 + log(1.5) * 0.25);
+        ASSERT_EQUAL_HINT(test_correct_relevance[0].relevance, zapros0, "Wrong sort document for relevance");
+        const double zapros1 = log(3) * 0.25;
+        ASSERT_EQUAL_HINT(test_correct_relevance[1].relevance, zapros1, "Wrong sort document for relevance");
+        const double zapros2 = log(1.5) * 0.25;
+        ASSERT_EQUAL_HINT(test_correct_relevance[2].relevance, zapros2, "Wrong sort document for relevance");
 }
 
 
 //Вычисление рейтинга документов. Рейтинг добавленного документа равен среднему арифметическому оценок документа.
-void CountRatingDocument()
+void TestCountRatingDocument()
 {
     SearchServer search_server;
     search_server.SetStopWords("и в на"s);
@@ -70,14 +78,17 @@ void CountRatingDocument()
     search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
     search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
     search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
-    ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s)[0].rating==5, "Not correct rating");
-    ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s)[1].rating == 2, "Not correct rating");
-    ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s)[2].rating == -1, "Not correct rating");
+
+    vector <Document> test_count_raiting = search_server.FindTopDocuments("пушистый ухоженный кот"s);
+    ASSERT_HINT(test_count_raiting.size() == 3, "Not correct size vector");
+    ASSERT_HINT(test_count_raiting[0].rating == (7+2+7)/3, "Not correct rating");
+    ASSERT_HINT(test_count_raiting[1].rating == (8-3)/2, "Not correct rating");
+    ASSERT_HINT(test_count_raiting[2].rating == (5-12+2+1)/4, "Not correct rating");
 }
 
 
 //Фильтрация результатов поиска с использованием предиката, задаваемого пользователем.
-void FiltrPredicate()
+void TestFiltrPredicate()
 {
     SearchServer search_server;
     search_server.SetStopWords("и в на"s);
@@ -86,24 +97,24 @@ void FiltrPredicate()
     search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
     search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
     //обычный
-    ASSERT_EQUAL(search_server.FindTopDocuments("пушистый ухоженный кот"s)[0].id, 1);
-    ASSERT_EQUAL(search_server.FindTopDocuments("пушистый ухоженный кот"s)[0].rating , 5);
-    ASSERT_EQUAL(search_server.FindTopDocuments("пушистый ухоженный кот"s)[1].id , 0);
-    ASSERT_EQUAL(search_server.FindTopDocuments("пушистый ухоженный кот"s)[1].rating , 2);
-    ASSERT_EQUAL(search_server.FindTopDocuments("пушистый ухоженный кот"s)[2].id , 2);
-    ASSERT_EQUAL(search_server.FindTopDocuments("пушистый ухоженный кот"s)[2].rating , -1);
+    vector <Document> Test_usual = search_server.FindTopDocuments("пушистый ухоженный кот"s);
+    ASSERT_HINT(Test_usual.size() == 3, "Wrong size vector");
+    ASSERT_EQUAL(Test_usual[0].id, 1);
+    ASSERT_EQUAL(Test_usual[1].id , 0);
+    ASSERT_EQUAL(Test_usual[2].id , 2);
     //status
-    ASSERT_EQUAL_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED)[0].id , 3, "Wrong document");
-    ASSERT_EQUAL_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED)[0].rating , 9, "Wrong document");
+    vector <Document> Test_status = search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED);
+    ASSERT_HINT(Test_status.size() == 1, "Wrong size vector");
+    ASSERT_EQUAL_HINT(Test_status[0].id , 3, "Wrong document");
     //predicate
-    ASSERT(search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; })[0].id == 0);
-    ASSERT(search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; })[0].rating == 2);
-    ASSERT(search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; })[1].id == 2);
-    ASSERT(search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; })[1].rating == -1);
+    vector <Document> Test_Predicate = search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; });
+    ASSERT_HINT(Test_Predicate.size() == 2, "Wrong size vector");
+    ASSERT(Test_Predicate[0].id == 0);
+    ASSERT(Test_Predicate[1].id == 2);
 }
 
 //Поиск документов, имеющих заданный статус.
-void FindDocumentWhichHaveStatus()
+void TestFindDocumentWhichHaveStatus()
 {
     SearchServer search_server;
     search_server.SetStopWords("и в на"s);
@@ -112,34 +123,60 @@ void FindDocumentWhichHaveStatus()
     search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::BANNED, { 5, -12, 2, 1 });
     search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::REMOVED, { 9 });
     search_server.AddDocument(4, "белый кот и модный ошейник ухожунный пес"s, DocumentStatus::ACTUAL, { 8, -3, 10, 11 });
+    //ACTUAL
+    vector <Document> test_Actual = search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::ACTUAL);
+    ASSERT(test_Actual.size() == 2);
+    ASSERT_HINT(test_Actual[0].id == 0, "The given status is not matched by these documents");
+    ASSERT_HINT(test_Actual[1].id == 4, "The given status is not matched by these documents");
+    //BANNED
+    ASSERT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED).size()==1);
     ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED)[0].id == 2,"The given status is not matched by these documents");
+    //IRRELEVANTE
+    ASSERT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::IRRELEVANT).size() == 1);
     ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::IRRELEVANT)[0].id == 1, "The given status is not matched by these documents");
-    ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::ACTUAL)[0].id == 0, "The given status is not matched by these documents");
-    ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::ACTUAL)[1].id == 4, "The given status is not matched by these documents");
+    //REMOVED
+    ASSERT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::REMOVED).size() == 1);
     ASSERT_HINT(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::REMOVED)[0].id == 3, "The given status is not matched by these documents");
 
 }
 
 //Корректное вычисление релевантности найденных документов.
-void CorrectCountRelevanceDocument()
+void TestCorrectCountRelevanceDocument()
 {
-    SearchServer search_server;
-    search_server.SetStopWords("и в на"s);
-    search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
-    ASSERT(search_server.FindTopDocuments("пушистый ухоженный кот"s)[0].relevance == 0);
+    //1 test
+    {
+        SearchServer search_server;
+        search_server.SetStopWords("и в на"s);
+        search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
+        ASSERT(search_server.FindTopDocuments("пушистый ухоженный кот"s).size() == 1);
+        ASSERT(search_server.FindTopDocuments("пушистый ухоженный кот"s)[0].relevance == 0);
+    }
+    //2 test
+    {
+        SearchServer search_server;
+        search_server.SetStopWords("и в на"s);
+        search_server.AddDocument(0, "белый кот и модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
+        search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+        search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
+        vector <Document> test_correct_relevance = search_server.FindTopDocuments("пушистый ухоженный кот"s);
+        ASSERT_HINT(test_correct_relevance.size() == 3, "Wrong size vector");
+        ASSERT_EQUAL_HINT(test_correct_relevance[0].relevance, log(search_server.GetDocumentCount() / 1.0) * 0.5 + log(search_server.GetDocumentCount() / 2.0) * 0.25, "Wrong relevance");
+        ASSERT_EQUAL_HINT(test_correct_relevance[1].relevance, log(search_server.GetDocumentCount() / 1.0) * 0.25, "Wrong relevance");
+        ASSERT_EQUAL_HINT(test_correct_relevance[2].relevance, log(search_server.GetDocumentCount() / 2.0) * 0.25, "Wrong relevance");
+    }
 }
 
 // Функция TestSearchServer является точкой входа для запуска тестов
 void TestSearchServer() {
     TestExcludeStopWordsFromAddedDocumentContent();
 
-    SupportMinusWord();
-    AddDocumentForSearching();
-    SortDocumentRelevance();
-    CountRatingDocument();
-    FiltrPredicate();
-    FindDocumentWhichHaveStatus();
-    CorrectCountRelevanceDocument();
+    TestSupportMinusWord();
+    TestAddDocumentForSearching();
+    TestSortDocumentRelevance();
+    TestCountRatingDocument();
+    TestFiltrPredicate();
+    TestFindDocumentWhichHaveStatus();
+    TestCorrectCountRelevanceDocument();
 
     // Не забудьте вызывать остальные тесты здесь
 }
